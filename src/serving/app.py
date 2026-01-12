@@ -1,15 +1,21 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException,Request
 import mlflow
 from dotenv import load_dotenv
 import os 
 from src.serving.schema import build_request_model_from_signature
 from fastapi import Body
 import pandas as pd
-
+from src.observability.middleware import request_id_middleware
+from src.observability.logger import get_logger
+from src.observability.metrics import Obj_Basic_Metrics
 
 load_dotenv()
+logger = get_logger("inference")
 
 app = FastAPI(title="Deploying Credit risk Model",version="0.0.0.1")
+
+app.middleware("http")(request_id_middleware)
+
 READY = False
 MODEL = None
 MODEL_INFO = None
@@ -66,13 +72,44 @@ def load_model():
 
 
 @app.post("/predict")
-def predict(payload=Body(...)):
+def predict( request: Request,payload=Body(...)):
     if not READY:
         raise HTTPException(status_code=503, detail="Service not ready")
 
     try:
         validated = REQUEST_MODEL(**payload)
+        Obj_Basic_Metrics.inc_sucess()
+        logger.info(
+                "inference_success_from_endpoint",
+                extra={
+                    "request_id": request.state.request_id,
+                    "model_name": MODEL_INFO["name"],
+                    "model_alias": MODEL_INFO["alias"],
+                    "model_run_id": MODEL_INFO["run_id"],
+                    # latency will come from middleware later via headers/log enrichment
+                },
+            )
+        
+
     except Exception as e:
+        Obj_Basic_Metrics.inc_erros()
+        logger.error(
+            "inference_failure_from_endpoint",
+            extra={
+                "request_id": request.state.request_id,
+                "model_name": MODEL_INFO["name"],
+                "model_alias": MODEL_INFO["alias"],
+                "model_run_id": MODEL_INFO["run_id"],
+                "error_type": type(e).__name__,
+                "error_message": str(e),
+            },
+        )
+
         raise HTTPException(status_code=400, detail=str(e))
 
     return {"status": "validated"}
+
+
+@app.get("/metrics/basic")
+def expose_basic_metrics():
+    return  Obj_Basic_Metrics.display_snapshot()
