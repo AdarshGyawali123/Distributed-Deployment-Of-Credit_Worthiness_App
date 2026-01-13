@@ -3,15 +3,23 @@ import time
 from fastapi import Request,HTTPException
 from src.observability.metrics import Obj_Basic_Metrics
 from src.observability.logger import get_logger
+from src.serving.lifecycle import IN_FLIGHT,IN_FLIGHT_LOCK
+
+
 
 
 logger = get_logger()
 async def request_id_middleware(request: Request, call_next):
-    Obj_Basic_Metrics.inc_reuqest()
 
+    global IN_FLIGHT
+    Obj_Basic_Metrics.inc_reuqest()
 
     request_id = str(uuid.uuid4())
     request.state.request_id = request_id
+
+
+    with IN_FLIGHT_LOCK:
+         IN_FLIGHT +=1
 
     start_time = time.perf_counter()
     try:
@@ -19,9 +27,16 @@ async def request_id_middleware(request: Request, call_next):
 
     except Exception as e:
             raise HTTPException(status_code=400, detail=str(e))
+    finally:
+        with  IN_FLIGHT_LOCK:
+         IN_FLIGHT -=1
+
     latency_ms = (time.perf_counter() - start_time) * 1000
     request.state.latency_ms = latency_ms
     Obj_Basic_Metrics.record_latency(latency_ms)
+
+
+        
 
 
     snapshot = Obj_Basic_Metrics.display_snapshot()
