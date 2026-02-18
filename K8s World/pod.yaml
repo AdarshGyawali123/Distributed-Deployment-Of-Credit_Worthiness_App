@@ -1,0 +1,18 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: credit-risk-pod
+  labels:
+    app: credit-risk
+spec:
+  containers:
+    - name: credit-risk
+      image: credit-risk-k8s:latest
+      imagePullPolicy: IfNotPresent
+      ports:
+        - containerPort: 8000
+      envFrom:
+        - configMapRef:
+            name: credit-risk-config
+        - secretRef:
+            name: credit-risk-secrets

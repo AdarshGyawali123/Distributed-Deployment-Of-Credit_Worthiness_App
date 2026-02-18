@@ -1,0 +1,21 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: iam-pod-metadata
+  labels:
+    app: hello-there
+spec:
+  containers:
+    - name: iam-a-affinity-pod
+      image: nginx
+      imagePullPolicy: IfNotPresent
+      
+  affinity:
+    nodeAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        nodeSelectorTerms:
+          - matchExpressions:
+              - key: key1
+                operator: In
+                values:
+                  - value1

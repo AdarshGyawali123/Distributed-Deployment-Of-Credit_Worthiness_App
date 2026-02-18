@@ -1,0 +1,28 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: i-am-daemonset
+spec:
+  selector:
+    matchLabels:
+      app: all-pods-under-me
+
+  template:
+    metadata:
+      labels: 
+        app: all-pods-under-me
+
+
+    spec:
+      containers:
+        - name: i-am-logger-container
+          image: busybox
+          command: ["sh","-c",
+                  "while true;
+                    do echo running on $(hostname);
+                    sleep 10;
+                    done ;
+                    "
+          
+          ]
+

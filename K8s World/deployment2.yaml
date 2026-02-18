@@ -1,0 +1,58 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata: 
+  name: this-is-deployment
+  labels: 
+    app: im-a-deployment-metadata
+spec:
+  replicas: 2
+
+  selector: 
+    matchLabels:
+      app: all-the-application-under-me
+  template:
+    metadata:
+      name: i-am-repica-name
+      labels:
+        app: all-the-application-under-me
+
+    spec:
+      containers:
+        - name: tried-myself-credit-risk
+          image: credit-risk-k8s:latest
+          imagePullPolicy: IfNotPresent
+
+          ports:
+            - containerPort: 8000
+          envFrom:
+            - configMapRef:
+                name: configmap-credit-risk
+            # - secretRef:
+            #     name: secret-credit-risk
+
+          startupProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 30
+            timeoutSeconds: 5
+            periodSeconds: 10
+            failureThreshold: 3
+
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 10
+            timeoutSeconds: 5
+            periodSeconds: 10
+            failureThreshold: 3
+
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: 8000
+            initialDelaySeconds: 60
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
